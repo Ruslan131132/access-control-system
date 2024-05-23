@@ -204,6 +204,12 @@
                     </a>
                 </li>
 
+                <li>
+                    <a href="{{route('users')}}" class="nav-link {{request()->routeIs('users') ? 'active' : 'link-body-emphasis'}}">
+                        <svg class="bi pe-none me-2" width="16" height="16"><use xlink:href="#people-circle"/></svg>
+                        Пользователи
+                    </a>
+                </li>
             </ul>
             <hr>
             <div class="dropdown">
@@ -212,6 +218,8 @@
                     <strong>{{auth()->user()->name ?? 'Гость'}}</strong>
                 </a>
                 <ul class="dropdown-menu text-small shadow">
+                    <li><a class="dropdown-item" href="{{route('users.add')}}">Добавить пользователя</a></li>
+                    <li><hr class="dropdown-divider"></li>
                     <li>
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
