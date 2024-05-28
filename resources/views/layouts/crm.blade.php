@@ -203,7 +203,12 @@
                         Главная
                     </a>
                 </li>
-
+                <li>
+                    <a href="{{route('logs')}}" class="nav-link {{request()->routeIs('logs') ? 'active' : 'link-body-emphasis'}}">
+                        <svg class="bi pe-none me-2" width="16" height="16"><use xlink:href="#table"/></svg>
+                        Журнал событий
+                    </a>
+                </li>
                 <li>
                     <a href="{{route('users')}}" class="nav-link {{request()->routeIs('users') ? 'active' : 'link-body-emphasis'}}">
                         <svg class="bi pe-none me-2" width="16" height="16"><use xlink:href="#people-circle"/></svg>

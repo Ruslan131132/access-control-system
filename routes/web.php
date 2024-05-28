@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CRM\AuthController;
+use App\Http\Controllers\CRM\MainController;
 use App\Http\Controllers\CRM\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -8,7 +9,8 @@ Route::get('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 
 Route::middleware('auth')->group(function () {
-    Route::get('/', fn () => view('main'))->name('main');
+    Route::get('/', [MainController::class, 'index'])->name('main');
+    Route::get('logs', [MainController::class, 'logs'])->name('logs');
     Route::get('users', [UserController::class, 'index'])->name('users');
     Route::get('users/add', [UserController::class, 'create'])->name('users.add');
     Route::post('users/add', [UserController::class, 'create'])->name('users.create');
