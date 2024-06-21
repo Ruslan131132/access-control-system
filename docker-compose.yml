@@ -1,0 +1,149 @@
+services:
+  app:
+    build: .
+    container_name: access-control-app
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    env_file:
+      - .env
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:${APP_PORT:-8000}
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: access_control
+      DB_USERNAME: access
+      DB_PASSWORD: secret
+      QUEUE_CONNECTION: database
+      CACHE_STORE: database
+      SESSION_DRIVER: database
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: access
+      RABBITMQ_PASSWORD: secret
+      RABBITMQ_VHOST: /
+      DOOR_DRIVER: mock
+    volumes:
+      - .:/var/www/html
+      - vendor_data:/var/www/html/vendor
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    command: php artisan serve --host=0.0.0.0 --port=8000
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:8000/up') === false ? 1 : 0);"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+    restart: unless-stopped
+
+  worker:
+    build: .
+    container_name: access-control-worker
+    env_file:
+      - .env
+    environment:
+      APP_ENV: local
+      SKIP_DB_SETUP: "1"
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: access_control
+      DB_USERNAME: access
+      DB_PASSWORD: secret
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: access
+      RABBITMQ_PASSWORD: secret
+      DOOR_DRIVER: mock
+    volumes:
+      - .:/var/www/html
+      - vendor_data:/var/www/html/vendor
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      app:
+        condition: service_healthy
+    command: php artisan rabbitmq:consume-access-events
+    restart: unless-stopped
+
+  simulator:
+    build: .
+    container_name: access-control-simulator
+    env_file:
+      - .env
+    environment:
+      APP_ENV: local
+      SKIP_DB_SETUP: "1"
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: access_control
+      DB_USERNAME: access
+      DB_PASSWORD: secret
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: access
+      RABBITMQ_PASSWORD: secret
+      DOOR_DRIVER: mock
+    volumes:
+      - .:/var/www/html
+      - vendor_data:/var/www/html/vendor
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      worker:
+        condition: service_started
+      app:
+        condition: service_healthy
+    command: php artisan rabbitmq:simulate-access-events --interval=10
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.0
+    container_name: access-control-mysql
+    environment:
+      MYSQL_DATABASE: access_control
+      MYSQL_USER: access
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: rootsecret
+    ports:
+      - "${MYSQL_PORT:-3307}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-prootsecret"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: access-control-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: access
+      RABBITMQ_DEFAULT_PASS: secret
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  rabbitmq_data:
+  vendor_data:
